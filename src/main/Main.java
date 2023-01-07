@@ -1,5 +1,54 @@
 package main;
-//test
+
+
+import function.Method;
+
+import java.awt.Adjustable;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.AdjustmentEvent;
+import java.awt.event.AdjustmentListener;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.net.URL;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import javax.swing.ImageIcon;
+import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
+import javax.swing.JScrollBar;
+import javax.swing.JScrollPane;
+import javax.swing.Timer;
+import javax.swing.filechooser.FileFilter;
+import message.Message;
+import my_swing.Emoji;
+import my_swing.Emoji_Group;
+import my_swing.Get_Box;
+import my_swing.Friend_Box;
+import my_swing.Get_Box_New;
+import my_swing.Get_Emoji;
+import my_swing.Get_Emoji_New;
+import my_swing.Get_File;
+import my_swing.Get_File_New;
+import my_swing.Get_Photo_Box;
+import my_swing.Get_Photo_Box_New;
+import my_swing.Get_Sound;
+import my_swing.Get_Sound_New;
+import my_swing.Send_Box;
+import my_swing.Send_Box_New;
+import my_swing.Send_Emoji;
+import my_swing.Send_Emoji_New;
+import my_swing.Send_File;
+import my_swing.Send_File_New;
+import my_swing.Send_Photo_Box;
+import my_swing.Send_Photo_Box_New;
+
 
 public class Main extends javax.swing.JFrame {
 
@@ -9,7 +58,48 @@ public class Main extends javax.swing.JFrame {
     }
 
     private void open() {
-
+        setIconImage(new ImageIcon(getClass().getResource("/icon/icon.png")).getImage());
+        popUp.add(panel);
+        popUp_emoji.add(panel_emoji);
+        popMix.add(panelMix);
+        popMix.setBackground(new Color(0, 0, 0, 0));
+        Method.setFram(this);
+     
+        Method.setTextFieldSyle(txt, "Type a message here ...");
+        for (int i = 0; i < 10; i++) {
+            cmdSendActionPerformed(null);
+        }
+        Emoji_Group eg1 = new Emoji_Group("emoji_green.png", 28);
+        eg1.setName("emoji_green");
+        eg1.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                setEmoji(eg1);
+            }
+        });
+        panelGroup.add(eg1);
+        Emoji_Group eg2 = new Emoji_Group("emoji_yellow.png", 28);
+        eg2.setName("emoji_yellow");
+        eg2.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                panelEmoji.removeAll();
+                for (int i = 1; i <= eg2.getIcons(); i++) {
+                    Emoji emo = new Emoji(eg2.getName() + " (" + i + ").png");
+                    emo.addActionListener(new ActionListener() {
+                        @Override
+                        public void actionPerformed(ActionEvent ae) {
+                         
+                        }
+                    });
+                    panelEmoji.add(emo);
+                }
+                panelEmoji.revalidate();
+                panelEmoji.repaint();
+            }
+        });
+        panelGroup.add(eg2);
+        setEmoji(eg1);
     }
 
     @SuppressWarnings("unchecked")
@@ -413,52 +503,435 @@ public class Main extends javax.swing.JFrame {
         setLocationRelativeTo(null);
     }// </editor-fold>//GEN-END:initComponents
 
-
+    private void setEmoji(Emoji_Group eg1) {
+        panelEmoji.removeAll();
+        for (int i = 1; i <= eg1.getIcons(); i++) {
+            Emoji emo = new Emoji(eg1.getName() + " (" + i + ").png");
+            emo.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent ae) {
+                    setEmoji(emo.getName());
+                }
+            });
+            panelEmoji.add(emo);
+        }
+        panelEmoji.revalidate();
+        panelEmoji.repaint();
+    }
     private void cmdSendActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmdSendActionPerformed
-
+        if (txt.getName().equals("have") && !txt.getText().equals("")) {
+            try {
+                Method.sendMessage(txt.getText().trim());
+                txt.setText("");
+                txt.grabFocus();
+            } catch (Exception e) {
+            }
+        }
     }//GEN-LAST:event_cmdSendActionPerformed
 
     private void cmdMoreActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmdMoreActionPerformed
-  
+        popUp.show(cmdMore, -10, -155);
     }//GEN-LAST:event_cmdMoreActionPerformed
 
     private void txtKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtKeyTyped
-
+        if (evt.getKeyChar() == 10) {
+            cmdSendActionPerformed(null);
+        }
     }//GEN-LAST:event_txtKeyTyped
 
-    private void formWindowOpened(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowOpened
+    private Thread th;
+    private int currentID = 0;
 
+    private void start() {
+        th = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    while (true) {
+                        System.out.println("waiting message ...");
+                        Message ms = (Message) Method.getIn().readObject();
+                        String status = ms.getStatus();
+                        if (status.equals("Message")) {
+                            getMessage(ms.getID(), ms.getMessage());
+                        } else if (status.equals("New")) {
+                            newFriend(ms.getImage(), ms.getID(), ms.getName().split("!")[0], ms.getName().split("!")[1]);
+                        } else if (status.equals("Photo")) {
+                            getPhoto(ms.getID(), ms.getImage());
+                        } else if (status.equals("File")) {
+                            getFile(ms.getID(), ms.getName(), ms.getImage());
+                        } else if (status.equals("Error")) {
+                            errorFrient(ms.getID());
+                        } else if (status.equals("Emoji")) {
+                            getEmoji(ms.getID(), ms.getMessage());
+                        } else if (status.equals("GetFile")) {
+                            download(ms);
+                        } else if (status.equals("Sound")) {
+                            getSound(ms.getID(), ms.getData(), ms.getMessage());
+                        }
+                    }
+                } catch (Exception e) {
+                    String ms = e.getMessage();
+                    if (ms.equals("Socket closed")) {
+                        signOut("Sign out");
+                    } else if (ms.equals("Connection reset")) {
+                        signOut("Server has error");
+                    } else {
+                        signOut("Error : " + ms);
+                    }
+
+                }
+            }
+        });
+        th.start();
+    }
+    private void formWindowOpened(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowOpened
+        start();
     }//GEN-LAST:event_formWindowOpened
 
     private void cmdPhotoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmdPhotoActionPerformed
-
+        popUp.setVisible(false);
+        setImage();
     }//GEN-LAST:event_cmdPhotoActionPerformed
 
     private void cmdEmojiActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmdEmojiActionPerformed
-
+        popUp.setVisible(false);
+        popUp_emoji.show(txt, 5, -365);
     }//GEN-LAST:event_cmdEmojiActionPerformed
 
     private void cmdFileActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmdFileActionPerformed
-
+        try {
+            popUp.setVisible(false);
+            setFile();
+        } catch (Exception e) {
+            showStatus("Error : " + e.getMessage());
+        }
     }//GEN-LAST:event_cmdFileActionPerformed
 
     private void cmdMicroActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmdMicroActionPerformed
-  
+        popMix.show(txt, 170, -90);
     }//GEN-LAST:event_cmdMicroActionPerformed
 
     private void cmdMixMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_cmdMixMousePressed
-
+        cmdMix.setBackground(new Color(94, 197, 95));
+        cmdMix.setText("Starting");
+      
     }//GEN-LAST:event_cmdMixMousePressed
 
     private void cmdMixMouseReleased(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_cmdMixMouseReleased
-
+        try {
+            cmdMix.setBackground(new Color(242, 67, 67));
+            cmdMix.setText("Start");
+        
+            popMix.setVisible(false);
+        } catch (Exception e) {
+            showStatus("Error : " + e.getMessage());
+        }
     }//GEN-LAST:event_cmdMixMouseReleased
 
     private void cmdLogOutActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmdLogOutActionPerformed
-
+        int c = JOptionPane.showConfirmDialog(this, "Are you sure you want to sign out ?", "Sign out", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+        if (c == JOptionPane.YES_OPTION) {
+            try {
+                Method.getClient().close();
+            } catch (Exception e) {
+            }
+        }
     }//GEN-LAST:event_cmdLogOutActionPerformed
 
-  
+    private void signOut(String ms) {
+        try {
+            this.dispose();
+            String[] v = {ms};
+            Login.main(v);
+        } catch (Exception e) {
+        }
+    }
+
+    private void getMessage(int ID, String ms) {
+        if (ID == Method.getMyID()) {
+            if (ID == currentID) {
+                Send_Box box = new Send_Box();
+                box.setMessage(ms);
+                panelChat.add(box);
+            } else {
+                Send_Box_New box = new Send_Box_New();
+                box.setMessage(ID, ms);
+                panelChat.add(box);
+            }
+        } else {
+            if (ID == currentID) {
+                Get_Box box = new Get_Box();
+                box.setMessage(ms);
+                panelChat.add(box);
+            } else {
+                Get_Box_New box = new Get_Box_New();
+                box.setMessage(ID, ms);
+                panelChat.add(box);
+            }
+            playSound();
+        }
+        currentID = ID;
+        refresh(panelChat);
+        scrollToBottom(spChat);
+    }
+
+    private void getPhoto(int ID, ImageIcon image) {
+        if (ID == Method.getMyID()) {
+            if (ID == currentID) {
+                Send_Photo_Box box = new Send_Photo_Box();
+                box.setPhoto(image);
+                panelChat.add(box);
+            } else {
+                Send_Photo_Box_New box = new Send_Photo_Box_New();
+                box.setPhoto(ID, image);
+                panelChat.add(box);
+            }
+        } else {
+            if (ID == currentID) {
+                Get_Photo_Box box = new Get_Photo_Box();
+                box.setPhoto(image);
+                panelChat.add(box);
+            } else {
+                Get_Photo_Box_New box = new Get_Photo_Box_New();
+                box.setPhoto(ID, image);
+                panelChat.add(box);
+            }
+            playSound();
+        }
+        currentID = ID;
+        refresh(panelChat);
+        scrollToBottom(spChat);
+    }
+
+    private void getEmoji(int ID, String emoji) {
+        if (ID == Method.getMyID()) {
+            if (ID == currentID) {
+                Send_Emoji box = new Send_Emoji();
+                box.setPhoto(emoji);
+                panelChat.add(box);
+            } else {
+                Send_Emoji_New box = new Send_Emoji_New();
+                box.setPhoto(ID, emoji);
+                panelChat.add(box);
+            }
+        } else {
+            if (ID == currentID) {
+                Get_Emoji box = new Get_Emoji();
+                box.setPhoto(emoji);
+                panelChat.add(box);
+            } else {
+                Get_Emoji_New box = new Get_Emoji_New();
+                box.setPhoto(ID, emoji);
+                panelChat.add(box);
+            }
+            playSound();
+        }
+        currentID = ID;
+        refresh(panelChat);
+        scrollToBottom(spChat);
+    }
+
+    private void getFile(int ID, String ms, ImageIcon icon) {
+        if (ID == Method.getMyID()) {
+            if (ID == currentID) {
+                Send_File box = new Send_File();
+                box.set(ms, icon);
+                panelChat.add(box);
+            } else {
+                Send_File_New box = new Send_File_New();
+                box.set(ID, ms, icon);
+                panelChat.add(box);
+            }
+        } else {
+            if (ID == currentID) {
+                Get_File box = new Get_File();
+                box.set(ms, icon);
+                panelChat.add(box);
+            } else {
+                Get_File_New box = new Get_File_New();
+                box.set(ID, ms, icon);
+                panelChat.add(box);
+            }
+            playSound();
+        }
+        currentID = ID;
+        refresh(panelChat);
+        scrollToBottom(spChat);
+    }
+
+    private void getSound(int ID, byte[] sound, String time) {
+        if (ID == Method.getMyID()) {
+            if (ID == currentID) {
+              
+            } else {
+        
+            }
+        } else {
+            if (ID == currentID) {
+                Get_Sound box = new Get_Sound();
+                box.set(sound, time);
+                panelChat.add(box);
+            } else {
+                Get_Sound_New box = new Get_Sound_New();
+                box.set(ID, sound, time);
+                panelChat.add(box);
+            }
+            playSound();
+        }
+        currentID = ID;
+        refresh(panelChat);
+        scrollToBottom(spChat);
+    }
+
+    private void download(Message ms) {
+        try {
+            File file = new File(ms.getName());
+            FileOutputStream out = new FileOutputStream(file);
+            out.write(ms.getData());
+            out.close();
+        } catch (Exception e) {
+            showStatus("Error : can't download");
+        }
+    }
+
+    private void newFriend(ImageIcon image, int ID, String name, String time) {
+        Friend_Box friend = new Friend_Box();
+        friend.set(image, ID, name, time);
+        Method.getFriends().put(ID, friend);
+        if (Method.getMyName().equalsIgnoreCase(name)) {
+            Method.setMyID(ID);
+            friend.itMe();
+        }
+        panelFriend.add(friend);
+        refresh(panelFriend);
+    }
+
+    private void errorFrient(int ID) {
+        panelFriend.remove((Component) Method.getFriends().get(ID));
+        Method.getFriends().remove(ID);
+        refresh(panelFriend);
+    }
+
+    private void refresh(Component obj) {
+        obj.revalidate();
+        obj.repaint();
+    }
+
+    private void setImage() {
+        JFileChooser ch = new JFileChooser();
+    
+    
+        ch.setFileFilter(new FileFilter() {
+            @Override
+            public boolean accept(File file) {
+                String name = file.getName();
+                return file.isDirectory() || name.endsWith(".png") || name.endsWith(".PNG") || name.endsWith("jpg") || name.endsWith("JPG");
+            }
+
+            @Override
+            public String getDescription() {
+                return "png,jpg";
+            }
+        });
+        int c = ch.showOpenDialog(this);
+        if (c == JFileChooser.APPROVE_OPTION) {
+            ImageIcon image = new ImageIcon(ch.getSelectedFile().getAbsolutePath());
+            try {
+                Method.sendPhoto(image);
+            } catch (Exception e) {
+                showStatus("Error : Can't send photo");
+            }
+        }
+    }
+
+    private void setFile() throws Exception {
+        JFileChooser ch = new JFileChooser();
+       
+  ;
+        int c = ch.showOpenDialog(this);
+        if (c == JFileChooser.APPROVE_OPTION) {
+            Method.sendFile(ch.getSelectedFile());
+        }
+    }
+
+    private void scrollToBottom(JScrollPane scrollPane) {
+        JScrollBar verticalBar = scrollPane.getVerticalScrollBar();
+        AdjustmentListener downScroller = new AdjustmentListener() {
+            @Override
+            public void adjustmentValueChanged(AdjustmentEvent e) {
+                Adjustable adjustable = e.getAdjustable();
+                adjustable.setValue(adjustable.getMaximum());
+                verticalBar.removeAdjustmentListener(this);
+            }
+        };
+        verticalBar.addAdjustmentListener(downScroller);
+    }
+
+    private void setEmoji(String emoji) {
+        try {
+            Method.sendEmoji(emoji);
+        } catch (Exception e) {
+            showStatus("Error : " + e.getMessage());
+        }
+    }
+
+    private void playSound() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    URL url = this.getClass().getClassLoader().getResource("sound/sound.wav");
+                    AudioInputStream audioIn = AudioSystem.getAudioInputStream(url);
+                    Clip clip = AudioSystem.getClip();
+                    clip.open(audioIn);
+                    clip.start();
+                } catch (Exception e) {
+                }
+            }
+        }).start();
+    }
+    private Timer timer = new Timer(5000, new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent ae) {
+            lbStatus.setText("");
+            timer.stop();
+        }
+    });
+
+    private void showStatus(String error) {
+        if (timer.isRunning()) {
+            lbStatus.setText("");
+            timer.stop();
+        }
+        timer.start();
+        lbStatus.setText(error);
+    }
+
+    public static void main(String args[]) {
+        try {
+            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+        } catch (ClassNotFoundException ex) {
+            java.util.logging.Logger.getLogger(Main.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (InstantiationException ex) {
+            java.util.logging.Logger.getLogger(Main.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            java.util.logging.Logger.getLogger(Main.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+            java.util.logging.Logger.getLogger(Main.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                new Main().setVisible(true);
+            }
+        });
+    }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private my_swing.Button cmdEmoji;
